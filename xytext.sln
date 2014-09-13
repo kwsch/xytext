@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual C# Express 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xytext", "xytext\xytext.csproj", "{FCF23AC5-FB83-437F-91B5-FB30EB67E85E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FCF23AC5-FB83-437F-91B5-FB30EB67E85E}.Debug|x86.ActiveCfg = Debug|x86
+		{FCF23AC5-FB83-437F-91B5-FB30EB67E85E}.Debug|x86.Build.0 = Debug|x86
+		{FCF23AC5-FB83-437F-91B5-FB30EB67E85E}.Release|x86.ActiveCfg = Release|x86
+		{FCF23AC5-FB83-437F-91B5-FB30EB67E85E}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
