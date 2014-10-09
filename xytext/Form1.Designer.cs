@@ -33,7 +33,7 @@
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu_openFolder = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.menu_Tools = new System.Windows.Forms.ToolStripMenuItem();
             this.menu_DumpTXT = new System.Windows.Forms.ToolStripMenuItem();
             this.CB_Entry = new System.Windows.Forms.ComboBox();
             this.dgv = new System.Windows.Forms.DataGridView();
@@ -69,7 +69,7 @@
             this.menuStrip1.BackColor = System.Drawing.SystemColors.Control;
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fileToolStripMenuItem,
-            this.toolsToolStripMenuItem});
+            this.menu_Tools});
             this.menuStrip1.LayoutStyle = System.Windows.Forms.ToolStripLayoutStyle.Flow;
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
@@ -92,17 +92,17 @@
             this.menu_openFolder.Text = "Open Folder";
             this.menu_openFolder.Click += new System.EventHandler(this.openFolder_Click);
             // 
-            // toolsToolStripMenuItem
+            // menu_Tools
             // 
-            this.toolsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menu_Tools.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.menu_DumpTXT});
-            this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
-            this.toolsToolStripMenuItem.Size = new System.Drawing.Size(48, 19);
-            this.toolsToolStripMenuItem.Text = "Tools";
+            this.menu_Tools.Enabled = false;
+            this.menu_Tools.Name = "menu_Tools";
+            this.menu_Tools.Size = new System.Drawing.Size(48, 19);
+            this.menu_Tools.Text = "Tools";
             // 
             // menu_DumpTXT
             // 
-            this.menu_DumpTXT.Enabled = false;
             this.menu_DumpTXT.Name = "menu_DumpTXT";
             this.menu_DumpTXT.Size = new System.Drawing.Size(152, 22);
             this.menu_DumpTXT.Text = "Dump to TXT";
@@ -193,7 +193,7 @@
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem menu_openFolder;
-        private System.Windows.Forms.ToolStripMenuItem toolsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem menu_Tools;
         private System.Windows.Forms.ToolStripMenuItem menu_DumpTXT;
         private System.Windows.Forms.ComboBox CB_Entry;
         private System.Windows.Forms.DataGridView dgv;

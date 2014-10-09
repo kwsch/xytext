@@ -103,7 +103,7 @@ namespace xytext
             CB_Entry.SelectedIndex = 0;
 
             // Enable Dumping All Text
-            menu_DumpTXT.Enabled = true;
+            menu_Tools.Enabled = true;
         }
                 
         // Top Level Functions
@@ -443,7 +443,7 @@ namespace xytext
             else if (val == '[')    // Special Variable
             {
                 int bracket = line.Substring(i + 1).IndexOf(']');
-                if (bracket < 4) throw new Exception("Variable encoding error!");
+                if (bracket < 3) throw new Exception("Variable encoding error!");
 
                 // [VAR X(a, b)]
                 // Remove the [ ] -> VAR X(a, b)
