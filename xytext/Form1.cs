@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.IO;
 
@@ -14,24 +10,26 @@ namespace xytext
     {
         public Form1()
         {
-            InitializeComponent();
             this.DragEnter += new DragEventHandler(file_DragEnter);
             this.DragDrop += new DragEventHandler(file_DragDrop);
+            InitializeComponent();
             
             setStringsDataGridView(new string[] { "Load a folder containing the text files.", "Text lines will then be displayed.", "Use the ComboBox / Dropdown menu to select what entry to display." });
         }
         public string[] files;
-
         // IO
         private void dumpTXT_Click(object sender, EventArgs e)
         {
             if (files.Length > 0)
             {
                 SaveFileDialog saveDump = new SaveFileDialog();
-                saveDump.Filter = "Text File|*.txt*";
+                saveDump.Filter = "Text File|*.txt";
                 DialogResult sdr = saveDump.ShowDialog();
                 if (sdr == DialogResult.OK)
                 {
+                    bool newline = false;
+                    if (MessageBox.Show("Remove newline formatting?", "Alert", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                        newline = true;
                     string path = saveDump.FileName;
                     using (MemoryStream ms = new MemoryStream())
                     {
@@ -44,7 +42,12 @@ namespace xytext
                                 tw.WriteLine("~~~~~~~~~~~~~~~");
                                 if (data != null)
                                     foreach (string line in data)
-                                        tw.WriteLine(line);
+                                    {
+                                        if (newline) 
+                                            tw.WriteLine(line.Replace("\\n\\n"," ").Replace("\\n", " ").Replace("\\c", "").Replace("\\r", "")); // Strip out formatting
+                                        else
+                                            tw.WriteLine(line);
+                                    }
                             }
                         File.WriteAllBytes(path, ms.ToArray());
                     }
@@ -81,16 +84,26 @@ namespace xytext
         private void openFolderPath(string path)
         {
             files = Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
+            if (files.Length == 0)
+            {
+                TB_Path.Text = "";
+                return;
+            }
             TB_Path.Text = path;
             CB_Entry.Items.Clear();
 
+            // Add all the valid entries.
             for (int i = 0; i < files.Length; i++)
                 CB_Entry.Items.Add(i.ToString());
 
+            // Enable Text Line Editing Interface
             CB_Entry.Enabled = true;
             B_SaveText.Enabled = true;
             B_AddLine.Enabled = B_RemoveLine.Enabled = true;
             CB_Entry.SelectedIndex = 0;
+
+            // Enable Dumping All Text
+            menu_DumpTXT.Enabled = true;
         }
                 
         // Top Level Functions
@@ -104,11 +117,15 @@ namespace xytext
             uint initialKey = BitConverter.ToUInt32(data, 8);
             int sectionData = BitConverter.ToInt32(data, 12);
 
+            try // Some sanity checking to prevent errors.
+            {
             if (initialKey != 0) throw new Exception("Invalid initial key! Not 0?");
             if (sectionData + totalLength != data.Length || textSections != 1) throw new Exception("Invalid Text File");
 
             uint sectionLength = BitConverter.ToUInt32(data, sectionData);
             if (sectionLength != totalLength) throw new Exception("Section size and overall size do not match.");
+            }
+            catch { return null; };
 
             // Prep result storage.
             ushort key = 0x7C89;
@@ -116,16 +133,15 @@ namespace xytext
 
             for (int i = 0; i < lineCount; i++)
             {
-                // uint offset
-                // uint length (ushort count)
+                // Init
                 ushort k = key;
                 string s = "";
                 int offset = BitConverter.ToInt32(data, i * 8 + sectionData + 4) + sectionData;
+                int length = BitConverter.ToInt16(data, i * 8 + sectionData + 8);
                 int start = offset;
-                int len = BitConverter.ToInt16(data, i * 8 + sectionData + 8);
-                ushort c = 0;
+                ushort c = 0; // u16 char
 
-                while (offset < start + len * 2)
+                while (offset < start + length * 2) // loop through the entire text line
                 {
                     decryptU16(data, ref offset, ref c, ref k);
                     if (c == 0)             // Terminated Line
@@ -148,7 +164,7 @@ namespace xytext
                         else s += (char)c;
                     }
                 }
-                // finish up loop; store string and set key for next line (if needed)
+                // store string and set key for next line (if needed)
                 result[i] = s;
                 key += 0x2983;
             }
@@ -165,13 +181,14 @@ namespace xytext
                 ushort baseKey = 0x7C89;
 
                 // Write up header template
-                bw.Write((ushort)1);
-                bw.Write((ushort)lines.Length);
-                bw.Write((uint)0); // temp
-                bw.Write((uint)0); // key, unused
-                bw.Write((uint)0x10); // ptr to data
+                bw.Write((ushort)1);            // Always 1 ? 
+                bw.Write((ushort)lines.Length); // Line Count
+                bw.Write((uint)0);              // (Temporary) Data Length - fixed at the end.
+                bw.Write((uint)0);              // Key, constant 0.
+                bw.Write((uint)0x10);           // Pointer to line data.
 
-                bw.Write((uint)0); // temp
+                // Begin data
+                bw.Write((uint)0);              // (Temporary) Data Length - fixed at the end.
 
                 for (int i = 0; i < lines.Length; i++)
                 {
@@ -185,17 +202,21 @@ namespace xytext
                             {
                                 ushort val = lines[i][j];
 
+                                // Handle special text characters
                                 // Private Use Area characters
-                                if (val == 0x202F) val = 0xE07F; // nbsp
-                                else if (val == 0x2026) val = 0xE08D; // …
-                                else if (val == 0x2642) val = 0xE08E; // ♂
-                                else if (val == 0x2640) val = 0xE08F; // ♀
+                                if (val == 0x202F) val = 0xE07F;        // nbsp
+                                else if (val == 0x2026) val = 0xE08D;   // …
+                                else if (val == 0x2642) val = 0xE08E;   // ♂
+                                else if (val == 0x2640) val = 0xE08F;   // ♀
 
-                                if (val == '[' || val == '\\')
+                                // Variables
+                                else if (val == '[' || val == '\\')          // Variable
                                     encryptVar(bz, lines[i], ref j, ref key);
+
+                                // Text
                                 else bz.Write(encryptU16(val, ref key));
                             }
-                            bz.Write(encryptU16(0, ref key)); // Add terminator cap, crypted of course!
+                            bz.Write(encryptU16(0, ref key)); // Add the null terminator, after encrypting it.
                         }
 
                         // Write the lineOffset and charCount to the header.
@@ -203,6 +224,7 @@ namespace xytext
                         bw.Write((uint)(data.Position - pos) / 2);
                         if (data.Position % 4 > 0) bz.Write((ushort)0);
 
+                        // Increment the line initial key for the next line.
                         baseKey += 0x2983;
                     }
                 }
@@ -217,17 +239,19 @@ namespace xytext
                 return textFile.ToArray();
             }
         }
-
         // Main Handling
         private void setStringsDataGridView(string[] textArray)
         {
+            // Clear the datagrid row content to remove all text lines.
             dgv.Rows.Clear();
 
-            if (textArray == null)
+            if (textArray == null) // Error handling for bad inputs.
                 return;
 
+            // Clear the header columns, these are repopulated every time.
             dgv.Columns.Clear();
 
+            // Reset settings and columns.
             dgv.AllowUserToResizeColumns = false;
             DataGridViewColumn dgvLine = new DataGridViewTextBoxColumn();
             {
@@ -245,11 +269,15 @@ namespace xytext
                 dgvText.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 dgvText.SortMode = DataGridViewColumnSortMode.NotSortable;
             }
+
+            // Re-add the columns.
             dgv.Columns.Add(dgvLine);
             dgv.Columns.Add(dgvText);
 
+            // Add empty rows equal to how many entries.
             dgv.Rows.Add(textArray.Length);
 
+            // Add the text lines into their cells.
             for (int i = 0; i < textArray.Length; i++)
             {
                 dgv.Rows[i].Cells[0].Value = i;
@@ -258,7 +286,7 @@ namespace xytext
         }
         private string[] getCurrentDGLines()
         {
-            // Get Lines
+            // Get Line Count
             string[] lines = new string[dgv.RowCount];
             for (int i = 0; i < dgv.RowCount; i++)
                 lines[i] = (string)dgv.Rows[i].Cells[1].Value;
@@ -307,7 +335,6 @@ namespace xytext
             for (int i = 0; i < dgv.Rows.Count; i++)
                 dgv.Rows[i].Cells[0].Value = i.ToString();
         }
-
         // Text Encrypting
         private ushort encryptU16(ushort val, ref ushort key)
         {
@@ -415,42 +442,50 @@ namespace xytext
                 else { throw new Exception("Invalid terminated line"); }
             else if (val == '[')    // Special Variable
             {
-                string varCMD = line.Substring(i + 1);
-                int bracket = varCMD.IndexOf(']');
-                if (bracket < 3) throw new Exception("Variable encoding error!");
+                int bracket = line.Substring(i + 1).IndexOf(']');
+                if (bracket < 4) throw new Exception("Variable encoding error!");
 
                 // [VAR X(a, b)]
                 // Remove the [ ] -> VAR X(a, b)
-                varCMD = line.Substring(i + 1, bracket);
+                string varCMD = line.Substring(i + 1, bracket);
                 i += bracket + 1; // Advance the index to the end of the bracket.
 
                 string varMethod = varCMD.Split(' ')[0];                    // Returns VAR or WAIT or ~
                 string varType = varCMD.Substring(varMethod.Length + 1);    // Returns the remainder of the var command data.
                 ushort varValue = 0;
 
+                // Set up argument storage (even if it not used)
                 List<ushort> args = new List<ushort>();
-                
-                switch (varMethod)
+
+                try
                 {
-                    case "~":       // No text set (Debug Variable)
-                        {
-                            varValue = 0xBDFF;
-                            args.Add(Convert.ToUInt16(varType));
-                            break;
-                        }
-                    case "WAIT":    // Event related pause.
-                        {
-                            varValue = 0xBE02; 
-                            args.Add(Convert.ToUInt16(varType));
-                            break;
-                        }
-                    case "VAR":
-                        {
-                            varValue = getVariableBytes(varType, ref args);
-                            break;
-                        }
-                    default: throw new Exception("Unknown variable method type!");
+                    switch (varMethod)
+                    {
+                        case "~":       // Blank Text Line Variable (No text set - debug/quality testing variable?)
+                            {
+                                varValue = 0xBDFF;
+                                args.Add(Convert.ToUInt16(varType));
+                                break;
+                            }
+                        case "WAIT":    // Event pause Variable.
+                            {
+                                varValue = 0xBE02;
+                                args.Add(Convert.ToUInt16(varType));
+                                break;
+                            }
+                        case "VAR":     // Text Variable
+                            {
+                                varValue = getVariableBytes(varType, ref args);
+                                break;
+                            }
+                        default: throw new Exception("Unknown variable method type!");
+                    }
                 }
+                catch (Exception e)
+                {
+                    MessageBox.Show("Variable error. Current line text is:\n\n" + line + "\n\n" + e.ToString(), "Alert");
+                }
+
                 // Write the Variable prefix.
                 bw.Write(encryptU16(0x0010, ref key));
                 // Write Length of the following Variable Data
@@ -480,7 +515,7 @@ namespace xytext
                 case 0xBDFF: // Empty Text line? Includes linenum so maybe for betatest finding used-unused lines?
                     { s += "[~ " + decryptU16(d, ref o, ref v, ref k).ToString() + "]"; return; }
 
-                // Else an actual variable.
+                // Else a text variable, so let's loop through all the variable types. If we cannot find it, we just write the u16 val.
                 default:
                     {
                         ushort varCode = varType; // decryptU16(d, ref o, ref v, ref k);
@@ -557,8 +592,5 @@ namespace xytext
                     }
             }
         }
-
-
-
     }
 }

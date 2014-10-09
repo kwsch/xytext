@@ -102,6 +102,7 @@
             // 
             // menu_DumpTXT
             // 
+            this.menu_DumpTXT.Enabled = false;
             this.menu_DumpTXT.Name = "menu_DumpTXT";
             this.menu_DumpTXT.Size = new System.Drawing.Size(152, 22);
             this.menu_DumpTXT.Text = "Dump to TXT";
